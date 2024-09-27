@@ -1,0 +1,515 @@
+                         1     ORG 0000H ; ORIGIN
+0000 020041              2     LJMP MAIN ; LONG JUMP TO MAIN
+0003 75A0FF              3             MOV P2, #0FFH ; SET PORT 2 AS AN INPUT
+0006 D2B2                4             SETB P3.2 ; SET PIN 3.2 AS AN INPUT
+0008 D2B3                5             SETB P3.3 ; SET PIN 3.3 AS AN INPUT
+000A 7580FF              6             MOV P0, #0FFH ; SET PORT 0 AS AN INPUT
+000D 75A000              7             MOV P2, #00H ; SET PORT 1 AS AN OUTPUT
+                         8             ORG 0030H ; OROGIN OF THE INTERRUPT FOR EMERGENCY
+0030 D296                9             SETB P1.6 ; RUN THE LED & BUZZER
+0032 31D0               10             ACALL DELAY_5 ; RUN THE BUZZER FOR 5 SECONDS
+0034 C290               11             CLR P1.0 ; STOP ALL THE MOTORS
+0036 C291               12             CLR P1.1
+0038 C292               13             CLR P1.2
+003A C293               14             CLR P1.3
+003C C294               15             CLR P1.4
+003E C295               16             CLR P1.5
+0040 32                 17             RETI ; RETURN TO THE INTERRUPT
+                        18     MAIN:
+0041 75A88C             19             MOV IE, #10001100B ; ENABLE THE INTERRUPT
+                        20     SLOT_SELECT: ; SLOT SELECTION
+                        21     SLOT1: ; SELECTING SLOT1
+0044 31BF               22             ACALL KEYPAD ; KEYPAD INITIALIZASTION
+0046 B40103             23             CJNE A, #00000001B, SLOT2 ; COMPARE WHETHER OR NOT THE BUTTON IS DESIGNATE FOR SLOT 1. IF NOT
+0049 02005C             24             LJMP CLR_SLOT1 ; CHECK TO SEE IF THE SELECTED SLOT OF 1 IS CLEAR IF THE BUTTON IS 1.
+                        25     SLOT2:
+004C 31BF               26             ACALL KEYPAD
+004E B40203             27             CJNE A, #00000010B, SLOT3
+0051 020064             28             LJMP CLR_SLOT2
+                        29     SLOT3:
+0054 31BF               30             ACALL KEYPAD
+0056 B403EB             31             CJNE A, #00000011B, SLOT1
+0059 02006C             32             LJMP CLR_SLOT3
+                        33     CLR_SLOT1: ; CLEARING THE SELECTION OF SLOT 1
+005C 31BF               34             ACALL KEYPAD
+005E B41016             35             CJNE A, #00010000B, SLOT1_DWN ; GO TO SLOT SELECTION OR GO TO SLOT 1 TAKING DOWN IF THE CLEAR
+0061 020044             36             LJMP SLOT_SELECT
+                        37     CLR_SLOT2:
+0064 31BF               38             ACALL KEYPAD
+0066 B41058             39             CJNE A, #00010000B, SLOT2_DWN
+0069 020044             40             LJMP SLOT_SELECT
+                        41     CLR_SLOT3:
+006C 31BF               42             ACALL KEYPAD
+006E B41000             43             CJNE A, #00010000B, GO
+0071 02013C             44     GO:     LJMP SLOT3_DWN
+0074 020044             45             LJMP SLOT_SELECT
+                        46     SLOT1_DWN:
+0077 31BF               47             ACALL KEYPAD
+0079 B404FD             48     BTN_DWN1: CJNE A, #00000100B, BTN_DWN1 ;UNTIL THE SLOT 1 DOWN BUTTON IS PRESED, PERMANENTLY CHECK
+007C C290               49             CLR P1.0 ; SET THE DIRECTION TO DOWNWARD
+007E 78C8               50             MOV R0, #200 ; SET THE TIME FOR 10 SECONDS
+0080 79C8               51     L0: MOV R1, #200
+0082 7AE6               52     L1: MOV R2, #230
+0084 C293               53     L2: CLR P1.3
+0086 31CB               54             ACALL DELAY
+0088 D293               55             SETB P1.3
+008A 31CB               56             ACALL DELAY
+008C DAF6               57             DJNZ R2, L2
+008E D9F2               58             DJNZ R1, L1
+0090 D8EE               59             DJNZ R0, L0
+0092 208009             60             JB P0.0, CH1
+0095 8000               61             SJMP B1
+                        62     B1:
+0097 3080FD             63             JNB P0.0, $
+009A 31D9               64             ACALL DELAY_60
+009C 800A               65             SJMP SLOT1_UP
+                        66     CH1:
+009E 2080FD             67             JB P0.0, $
+00A1 31BF               68             ACALL KEYPAD
+00A3 B406FD             69     BTN_UP1: CJNE A, #00000110B, BTN_UP1
+00A6 8000               70             SJMP SLOT1_UP
+                        71     SLOT1_UP:
+00A8 D290               72             SETB P1.0 ; SET THE DIRECTION TO THE UPWARD
+00AA 78C8               73             MOV R0, #200 ; SET THE TIME FOR 10 SECONDS
+00AC 7AC8               74     L0_VM1: MOV R2, #200
+00AE 79E6               75     L1_VM1: MOV R1, #230
+00B0 C293               76     L2_VM1: CLR P1.3 ; ROTATE VM1 IN 50% PWM
+00B2 31CB               77             ACALL DELAY
+00B4 D293               78             SETB P1.3
+00B6 31CB               79             ACALL DELAY
+00B8 D9F6               80             DJNZ R1, L2_VM1
+00BA DAF2               81             DJNZ R2, L1_VM1
+00BC D8EE               82             DJNZ R0, L0_VM1
+00BE 020041             83             LJMP MAIN ; LONG JUMP TO THE MAIN LABLE
+                        84     SLOT2_DWN:
+00C1 31BF               85             ACALL KEYPAD
+00C3 B404FD             86     BTN_DWN2: CJNE A, #00000100B, BTN_DWN2 ;TILL THE SLOT 2 DOWN BUTTON IS PRESED, CHECK CONTINUOUSLY
+00C6 20831A             87             JB P0.3, DWN_2 ; VERIFY WHETHER THE SLOT BELOW (SLOT 5) IS OCCUPIED OR NOT.
+00C9 8000               88             SJMP HM1_LFT ; IF THE ADDRESS FOR ROTATE HM1 TO THE LEFT (TO SLOT4) IS OCCUPIED
+                        89     HM1_LFT:
+00CB C290               90             CLR P1.0 ; SET THE DIRECTION TO THE LEFTWARD
+00CD 78C8               91             MOV R0, #200 ; SET THE TIME FOR 10 SECONDS
+00CF 7AC8               92     L0_HM1: MOV R2, #200
+00D1 79E6               93     L1_HM1: MOV R1, #230
+00D3 C294               94     L2_HM1: CLR P1.4 ; ROTATE HM1 IN 50% PWM
+00D5 31CB               95             ACALL DELAY
+00D7 D294               96             SETB P1.4
+00D9 31CB               97             ACALL DELAY
+00DB D9F6               98             DJNZ R1, L2_HM1
+00DD DAF2               99             DJNZ R2, L1_HM1
+00DF D8EE              100             DJNZ R0, L0_HM1
+00E1 8000              101             SJMP DWN_2
+00E3 C290              102     DWN_2: CLR P1.0
+00E5 78C8              103             MOV R0, #200 ; SET THE TIME FOR 10 SECONDS
+00E7 7AC8              104     L0_VM2: MOV R2, #200
+00E9 79E6              105     L1_VM2: MOV R1, #230
+00EB C291              106     L2_VM2: CLR P1.1 ; ROTATE VM2 IN 50% PWM
+00ED 31CB              107             ACALL DELAY
+00EF D291              108             SETB P1.1
+00F1 31CB              109             ACALL DELAY
+00F3 D9F6              110             DJNZ R1, L2_VM2
+00F5 DAF2              111             DJNZ R2, L1_VM2
+00F7 D8EE              112             DJNZ R0, L0_VM2
+00F9 208109            113             JB P0.1, CH2
+00FC 8000              114             SJMP B2
+                       115     B2:
+00FE 3081FD            116             JNB P0.1, $
+0101 31D9              117             ACALL DELAY_60
+0103 800A              118             SJMP SLOT2_UP
+                       119     CH2:
+0105 2081FD            120             JB P0.1, $
+0108 31BF              121             ACALL KEYPAD
+010A B406FD            122     BTN_UP2: CJNE A, #00000110B, BTN_UP2
+010D 8000              123             SJMP SLOT2_UP
+                       124     SLOT2_UP:
+010F D290              125             SETB P1.0 ; SET THE DIRECTION TO THE UPWARD & RIGHTWARD
+0111 78C8              126             MOV R0, #200 ; SET THE TIME FOR 10 SECONDS
+0113 7AC8              127     L12_VM2: MOV R2, #200
+0115 79E6              128     L10_VM2: MOV R1, #230
+0117 C294              129     L20_VM2: CLR P1.4 ; ROTATE VM2 IN 50% PWM
+0119 31CB              130             ACALL DELAY
+011B D294              131             SETB P1.4
+011D 31CB              132             ACALL DELAY
+011F D9F6              133             DJNZ R1, L20_VM2
+0121 DAF2              134             DJNZ R2, L10_VM2
+0123 D8EE              135             DJNZ R0, L12_VM2
+0125 78C8              136             MOV R0, #200 ; SET THE TIME FOR 10 SECONDS
+0127 7AC8              137     L33_HM1: MOV R2, #200
+0129 79E6              138     L11_HM1: MOV R1, #230
+012B C291              139     L22_HM1: CLR P1.1 ; ROTATE HM1 IN 50% PWM
+012D 31CB              140             ACALL DELAY
+012F D291              141             SETB P1.1
+0131 31CB              142             ACALL DELAY
+0133 D9F6              143             DJNZ R1, L22_HM1
+0135 DAF2              144             DJNZ R2, L11_HM1
+0137 D8EE              145             DJNZ R0, L33_HM1
+0139 020041            146             LJMP MAIN ; LONG JUMP TO THE MAIN LABLE
+                       147     SLOT3_DWN:
+013C 31BF              148             ACALL KEYPAD
+013E B404FD            149     BTN_DWN3: CJNE A, #00000100B, BTN_DWN3 ;UNTIL THE SLOT 3 DOWN BUTTON IS PRESED, PERMANENTLY CHECK
+0141 20839F            150             JB P0.3, DWN_2 ; VERIFY WHETHER OR NOT THE SLOT BELOW (SLOT 6) IS OCCUPIED.
+0144 8000              151             SJMP HM12_LFT ; IF THE ADDRESS FOR ROTATE HM1 & HM2 TO THE LEFT IS OCCUPIED
+                       152     HM12_LFT:
+0146 C290              153             CLR P1.0 ; SET THE DIRECTION TO THE LEFWARD
+0148 78C8              154             MOV R0, #200 ; SET THE TIME FOR 10 SECONDS
+014A 7AC8              155     L300_HM: MOV R2, #200
+014C 79E6              156     L100_HM: MOV R1, #230
+014E C291              157     L200_HM: CLR P1.1 ; ROTATE HM1 & HM2 IN 50% PWM
+0150 C292              158             CLR P1.2
+0152 31CB              159             ACALL DELAY
+0154 D291              160             SETB P1.1
+0156 D292              161             SETB P1.2
+0158 31CB              162             ACALL DELAY
+015A D9F2              163             DJNZ R1, L200_HM
+015C DAEE              164             DJNZ R2, L100_HM
+015E D8EA              165             DJNZ R0, L300_HM
+0160 8000              166             SJMP DWN_3
+                       167     DWN_3:
+0162 C290              168             CLR P1.0 ; SET THE DIRECTION TO THE DOWNWARD
+0164 78C8              169             MOV R0, #200 ; SET THE TIME FOR 10 SECONDS
+0166 7AC8              170     L330_VM3: MOV R2, #200
+0168 79E6              171     L110_VM3: MOV R1, #230
+016A C295              172     L220_VM3: CLR P1.5 ; ROTATE VM3 IN 50% PWM
+016C 31CB              173             ACALL DELAY
+016E D295              174             SETB P1.5
+0170 31CB              175             ACALL DELAY
+0172 D9F6              176             DJNZ R1, L220_VM3
+0174 DAF2              177             DJNZ R2, L110_VM3
+0176 D8EE              178             DJNZ R0, L330_VM3
+0178 208209            179             JB P0.2, CH3
+017B 8000              180             SJMP B3
+                       181     B3:
+017D 3082FD            182             JNB P0.2, $
+0180 31D9              183             ACALL DELAY_60
+0182 800A              184             SJMP SLOT3_UP
+                       185     CH3:
+0184 2082FD            186             JB P0.2, $
+0187 31BF              187             ACALL KEYPAD
+0189 B406FD            188     BTN_UP3: CJNE A, #00000110B, BTN_UP3
+018C 8000              189             SJMP SLOT3_UP
+                       190     SLOT3_UP:
+018E D290              191             SETB P1.0 ; SET THE DIRECTION TO THE UPWARD & RIGHTWARD
+0190 78FF              192             MOV R0, #255 ; SET THE TIME FOR 10 SECONDS
+0192 7AC8              193     L333_VM3: MOV R2, #200
+0194 79F0              194     L111_VM3: MOV R1, #240
+0196 C295              195     L222_VM3: CLR P1.5 ; ROTATE VM3 IN 50% PWM
+0198 31CB              196             ACALL DELAY
+019A D295              197             SETB P1.5
+019C 31CB              198             ACALL DELAY
+019E D9F6              199             DJNZ R1, L222_VM3
+01A0 DAF2              200             DJNZ R2, L111_VM3
+01A2 D8EE              201             DJNZ R0, L333_VM3
+01A4 78FF              202             MOV R0, #255 ; SET THE TIME FOR 10 SECONDS
+01A6 7AC8              203     L333_HM: MOV R2, #200
+01A8 79F0              204     L111_HM: MOV R1, #240
+01AA C291              205     L222_HM: CLR P1.1 ; ROTATE HM1 & HM2 IN 50% PWM
+01AC C292              206             CLR P1.2
+01AE 31CB              207             ACALL DELAY
+01B0 D291              208             SETB P1.1
+01B2 D292              209             SETB P1.2
+01B4 31CB              210             ACALL DELAY
+01B6 D9F2              211             DJNZ R1, L222_HM
+01B8 DAEE              212             DJNZ R2, L111_HM
+01BA D8EA              213             DJNZ R0, L333_HM
+01BC 020041            214             LJMP MAIN ; ADDRESS TO THE MAIN LABLE
+01BF C2A8              215     KEYPAD: CLR 0A8H
+01C1 20B2FD            216             JB 0B2H, $
+01C4 90FFF4            217             MOV DPTR, #0FFF4H
+01C7 E0                218             MOVX A, @DPTR
+01C8 D2A8              219             SETB 0A8H
+01CA 22                220             RET
+01CB 7C0F              221     DELAY: MOV R4, #15
+01CD DCFE              222     LOOP_6: DJNZ R4, LOOP_6
+01CF 22                223             RET
+                       224     DELAY_5:
+01D0 78C8              225             MOV R0, #200
+01D2 7973              226     LOOP_4: MOV R1, #115
+01D4 D9FE              227     LOOP_5: DJNZ R1, LOOP_5
+01D6 D8FA              228             DJNZ R0, LOOP_4
+01D8 22                229             RET
+                       230     DELAY_60:
+01D9 7C0F              231             MOV R4, #15
+01DB 7D04              232     LOOP_2: MOV R5, #4
+01DD 7E04              233     LOOP_1: MOV R6, #4
+01DF 758901            234     LOOP_0: MOV TMOD, #00000001B
+01E2 758C00            235             MOV TH0, #00H
+01E5 758A00            236             MOV TL0, #00H
+01E8 D28C              237             SETB TR0
+01EA 308DFD            238             JNB TF0, $
+01ED C28C              239             CLR TR0
+01EF C28D              240             CLR TF0
+01F1 DEEC              241             DJNZ R6, LOOP_0
+01F3 DDE8              242             DJNZ R5, LOOP_1
+01F5 DCE4              243             DJNZ R4, LOOP_2
+01F7 758901            244             MOV TMOD, #00000001B
+01FA 758C2B            245             MOV TH0, #02BH
+01FD 758A85            246             MOV TL0, #085H
+0200 D28C              247             SETB TR0
+0202 308DFD            248             JNB TF0, $
+0205 C28C              249             CLR TR0
+0207 C28D              250             CLR TF0
+0209 22                251             RET
+                       252             END
+ASSEMBLY COMPLETE, NO ERRORS FOUND, NO WARNINGS
+
+
+SYMBOL TABLE:
+??MCU_8051_IDE . . . . . . . . . . .  N  NUMB  8051H  NOT USED
+??VERSION. . . . . . . . . . . . . .  N  NUMB  0149H  NOT USED
+AC . . . . . . . . . . . . . . . . .  B  ADDR  00D6H  NOT USED
+ACC. . . . . . . . . . . . . . . . .  D  ADDR  00E0H  NOT USED
+ACSR . . . . . . . . . . . . . . . .  D  ADDR  0097H  NOT USED
+ADCF . . . . . . . . . . . . . . . .  D  ADDR  00F6H  NOT USED
+ADCLK. . . . . . . . . . . . . . . .  D  ADDR  00F2H  NOT USED
+ADCON. . . . . . . . . . . . . . . .  D  ADDR  00F3H  NOT USED
+ADDH . . . . . . . . . . . . . . . .  D  ADDR  00F5H  NOT USED
+ADDL . . . . . . . . . . . . . . . .  D  ADDR  00F4H  NOT USED
+AUXR . . . . . . . . . . . . . . . .  D  ADDR  008EH  NOT USED
+AUXR1. . . . . . . . . . . . . . . .  D  ADDR  00A2H  NOT USED
+B. . . . . . . . . . . . . . . . . .  D  ADDR  00F0H  NOT USED
+B1 . . . . . . . . . . . . . . . . .  C  ADDR  0097H
+B2 . . . . . . . . . . . . . . . . .  C  ADDR  00FEH
+B3 . . . . . . . . . . . . . . . . .  C  ADDR  017DH
+BDRCON . . . . . . . . . . . . . . .  D  ADDR  009BH  NOT USED
+BDRCON_1 . . . . . . . . . . . . . .  D  ADDR  009CH  NOT USED
+BRL. . . . . . . . . . . . . . . . .  D  ADDR  009AH  NOT USED
+BTN_DWN1 . . . . . . . . . . . . . .  C  ADDR  0079H
+BTN_DWN2 . . . . . . . . . . . . . .  C  ADDR  00C3H
+BTN_DWN3 . . . . . . . . . . . . . .  C  ADDR  013EH
+BTN_UP1. . . . . . . . . . . . . . .  C  ADDR  00A3H
+BTN_UP2. . . . . . . . . . . . . . .  C  ADDR  010AH
+BTN_UP3. . . . . . . . . . . . . . .  C  ADDR  0189H
+CCAP0H . . . . . . . . . . . . . . .  D  ADDR  00FAH  NOT USED
+CCAP0L . . . . . . . . . . . . . . .  D  ADDR  00EAH  NOT USED
+CCAP1H . . . . . . . . . . . . . . .  D  ADDR  00FBH  NOT USED
+CCAP1L . . . . . . . . . . . . . . .  D  ADDR  00EBH  NOT USED
+CCAP2H . . . . . . . . . . . . . . .  D  ADDR  00FCH  NOT USED
+CCAP3H . . . . . . . . . . . . . . .  D  ADDR  00FDH  NOT USED
+CCAP4H . . . . . . . . . . . . . . .  D  ADDR  00FEH  NOT USED
+CCAPL2H. . . . . . . . . . . . . . .  D  ADDR  00FCH  NOT USED
+CCAPL2L. . . . . . . . . . . . . . .  D  ADDR  00ECH  NOT USED
+CCAPL3H. . . . . . . . . . . . . . .  D  ADDR  00FDH  NOT USED
+CCAPL3L. . . . . . . . . . . . . . .  D  ADDR  00EDH  NOT USED
+CCAPL4H. . . . . . . . . . . . . . .  D  ADDR  00FEH  NOT USED
+CCAPL4L. . . . . . . . . . . . . . .  D  ADDR  00EEH  NOT USED
+CCAPM0 . . . . . . . . . . . . . . .  D  ADDR  00DAH  NOT USED
+CCAPM1 . . . . . . . . . . . . . . .  D  ADDR  00DBH  NOT USED
+CCAPM2 . . . . . . . . . . . . . . .  D  ADDR  00DCH  NOT USED
+CCAPM3 . . . . . . . . . . . . . . .  D  ADDR  00DDH  NOT USED
+CCAPM4 . . . . . . . . . . . . . . .  D  ADDR  00DEH  NOT USED
+CCF0 . . . . . . . . . . . . . . . .  B  ADDR  00D8H  NOT USED
+CCF1 . . . . . . . . . . . . . . . .  B  ADDR  00D9H  NOT USED
+CCF2 . . . . . . . . . . . . . . . .  B  ADDR  00DAH  NOT USED
+CCF3 . . . . . . . . . . . . . . . .  B  ADDR  00DBH  NOT USED
+CCF4 . . . . . . . . . . . . . . . .  B  ADDR  00DCH  NOT USED
+CCON . . . . . . . . . . . . . . . .  D  ADDR  00D8H  NOT USED
+CFINT. . . . . . . . . . . . . . . .  C  ADDR  0033H  NOT USED
+CH . . . . . . . . . . . . . . . . .  D  ADDR  00F9H  NOT USED
+CH1. . . . . . . . . . . . . . . . .  C  ADDR  009EH
+CH2. . . . . . . . . . . . . . . . .  C  ADDR  0105H
+CH3. . . . . . . . . . . . . . . . .  C  ADDR  0184H
+CKCON. . . . . . . . . . . . . . . .  D  ADDR  008FH  NOT USED
+CKCON0 . . . . . . . . . . . . . . .  D  ADDR  008FH  NOT USED
+CKRL . . . . . . . . . . . . . . . .  D  ADDR  0097H  NOT USED
+CKSEL. . . . . . . . . . . . . . . .  D  ADDR  0085H  NOT USED
+CL . . . . . . . . . . . . . . . . .  D  ADDR  00E9H  NOT USED
+CLKREG . . . . . . . . . . . . . . .  D  ADDR  008FH  NOT USED
+CLR_SLOT1. . . . . . . . . . . . . .  C  ADDR  005CH
+CLR_SLOT2. . . . . . . . . . . . . .  C  ADDR  0064H
+CLR_SLOT3. . . . . . . . . . . . . .  C  ADDR  006CH
+CMOD . . . . . . . . . . . . . . . .  D  ADDR  00D9H  NOT USED
+CPRL2. . . . . . . . . . . . . . . .  B  ADDR  00C8H  NOT USED
+CR . . . . . . . . . . . . . . . . .  B  ADDR  00DEH  NOT USED
+CT2. . . . . . . . . . . . . . . . .  B  ADDR  00C9H  NOT USED
+CY . . . . . . . . . . . . . . . . .  B  ADDR  00D7H  NOT USED
+DELAY. . . . . . . . . . . . . . . .  C  ADDR  01CBH
+DELAY_5. . . . . . . . . . . . . . .  C  ADDR  01D0H
+DELAY_60 . . . . . . . . . . . . . .  C  ADDR  01D9H
+DP0H . . . . . . . . . . . . . . . .  D  ADDR  0083H  NOT USED
+DP0L . . . . . . . . . . . . . . . .  D  ADDR  0082H  NOT USED
+DP1H . . . . . . . . . . . . . . . .  D  ADDR  0085H  NOT USED
+DP1L . . . . . . . . . . . . . . . .  D  ADDR  0084H  NOT USED
+DPH. . . . . . . . . . . . . . . . .  D  ADDR  0083H  NOT USED
+DPL. . . . . . . . . . . . . . . . .  D  ADDR  0082H  NOT USED
+DWN_2. . . . . . . . . . . . . . . .  C  ADDR  00E3H
+DWN_3. . . . . . . . . . . . . . . .  C  ADDR  0162H
+EA . . . . . . . . . . . . . . . . .  B  ADDR  00AFH  NOT USED
+EC . . . . . . . . . . . . . . . . .  B  ADDR  00AEH  NOT USED
+EECON. . . . . . . . . . . . . . . .  D  ADDR  0096H  NOT USED
+ES . . . . . . . . . . . . . . . . .  B  ADDR  00ACH  NOT USED
+ET0. . . . . . . . . . . . . . . . .  B  ADDR  00A9H  NOT USED
+ET1. . . . . . . . . . . . . . . . .  B  ADDR  00ABH  NOT USED
+ET2. . . . . . . . . . . . . . . . .  B  ADDR  00ADH  NOT USED
+EX0. . . . . . . . . . . . . . . . .  B  ADDR  00A8H  NOT USED
+EX1. . . . . . . . . . . . . . . . .  B  ADDR  00AAH  NOT USED
+EXEN2. . . . . . . . . . . . . . . .  B  ADDR  00CBH  NOT USED
+EXF2 . . . . . . . . . . . . . . . .  B  ADDR  00CEH  NOT USED
+EXTI0. . . . . . . . . . . . . . . .  C  ADDR  0003H  NOT USED
+EXTI1. . . . . . . . . . . . . . . .  C  ADDR  0013H  NOT USED
+F0 . . . . . . . . . . . . . . . . .  B  ADDR  00D5H  NOT USED
+FE . . . . . . . . . . . . . . . . .  B  ADDR  009FH  NOT USED
+GO . . . . . . . . . . . . . . . . .  C  ADDR  0071H
+HM12_LFT . . . . . . . . . . . . . .  C  ADDR  0146H
+HM1_LFT. . . . . . . . . . . . . . .  C  ADDR  00CBH
+IE . . . . . . . . . . . . . . . . .  D  ADDR  00A8H
+IE0. . . . . . . . . . . . . . . . .  B  ADDR  0089H  NOT USED
+IE1. . . . . . . . . . . . . . . . .  B  ADDR  008BH  NOT USED
+INT0 . . . . . . . . . . . . . . . .  B  ADDR  00B2H  NOT USED
+INT1 . . . . . . . . . . . . . . . .  B  ADDR  00B3H  NOT USED
+IP . . . . . . . . . . . . . . . . .  D  ADDR  00B8H  NOT USED
+IPH. . . . . . . . . . . . . . . . .  D  ADDR  00B7H  NOT USED
+IPH0 . . . . . . . . . . . . . . . .  D  ADDR  00B7H  NOT USED
+IPH1 . . . . . . . . . . . . . . . .  D  ADDR  00B3H  NOT USED
+IPL0 . . . . . . . . . . . . . . . .  D  ADDR  00B8H  NOT USED
+IPL1 . . . . . . . . . . . . . . . .  D  ADDR  00B2H  NOT USED
+IT0. . . . . . . . . . . . . . . . .  B  ADDR  0088H  NOT USED
+IT1. . . . . . . . . . . . . . . . .  B  ADDR  008AH  NOT USED
+KBE. . . . . . . . . . . . . . . . .  D  ADDR  009DH  NOT USED
+KBF. . . . . . . . . . . . . . . . .  D  ADDR  009EH  NOT USED
+KBLS . . . . . . . . . . . . . . . .  D  ADDR  009CH  NOT USED
+KEYPAD . . . . . . . . . . . . . . .  C  ADDR  01BFH
+L0 . . . . . . . . . . . . . . . . .  C  ADDR  0080H
+L0_HM1 . . . . . . . . . . . . . . .  C  ADDR  00CFH
+L0_VM1 . . . . . . . . . . . . . . .  C  ADDR  00ACH
+L0_VM2 . . . . . . . . . . . . . . .  C  ADDR  00E7H
+L1 . . . . . . . . . . . . . . . . .  C  ADDR  0082H
+L100_HM. . . . . . . . . . . . . . .  C  ADDR  014CH
+L10_VM2. . . . . . . . . . . . . . .  C  ADDR  0115H
+L110_VM3 . . . . . . . . . . . . . .  C  ADDR  0168H
+L111_HM. . . . . . . . . . . . . . .  C  ADDR  01A8H
+L111_VM3 . . . . . . . . . . . . . .  C  ADDR  0194H
+L11_HM1. . . . . . . . . . . . . . .  C  ADDR  0129H
+L12_VM2. . . . . . . . . . . . . . .  C  ADDR  0113H
+L1_HM1 . . . . . . . . . . . . . . .  C  ADDR  00D1H
+L1_VM1 . . . . . . . . . . . . . . .  C  ADDR  00AEH
+L1_VM2 . . . . . . . . . . . . . . .  C  ADDR  00E9H
+L2 . . . . . . . . . . . . . . . . .  C  ADDR  0084H
+L200_HM. . . . . . . . . . . . . . .  C  ADDR  014EH
+L20_VM2. . . . . . . . . . . . . . .  C  ADDR  0117H
+L220_VM3 . . . . . . . . . . . . . .  C  ADDR  016AH
+L222_HM. . . . . . . . . . . . . . .  C  ADDR  01AAH
+L222_VM3 . . . . . . . . . . . . . .  C  ADDR  0196H
+L22_HM1. . . . . . . . . . . . . . .  C  ADDR  012BH
+L2_HM1 . . . . . . . . . . . . . . .  C  ADDR  00D3H
+L2_VM1 . . . . . . . . . . . . . . .  C  ADDR  00B0H
+L2_VM2 . . . . . . . . . . . . . . .  C  ADDR  00EBH
+L300_HM. . . . . . . . . . . . . . .  C  ADDR  014AH
+L330_VM3 . . . . . . . . . . . . . .  C  ADDR  0166H
+L333_HM. . . . . . . . . . . . . . .  C  ADDR  01A6H
+L333_VM3 . . . . . . . . . . . . . .  C  ADDR  0192H
+L33_HM1. . . . . . . . . . . . . . .  C  ADDR  0127H
+LOOP_0 . . . . . . . . . . . . . . .  C  ADDR  01DFH
+LOOP_1 . . . . . . . . . . . . . . .  C  ADDR  01DDH
+LOOP_2 . . . . . . . . . . . . . . .  C  ADDR  01DBH
+LOOP_4 . . . . . . . . . . . . . . .  C  ADDR  01D2H
+LOOP_5 . . . . . . . . . . . . . . .  C  ADDR  01D4H
+LOOP_6 . . . . . . . . . . . . . . .  C  ADDR  01CDH
+MAIN . . . . . . . . . . . . . . . .  C  ADDR  0041H
+OSCCON . . . . . . . . . . . . . . .  D  ADDR  0086H  NOT USED
+OV . . . . . . . . . . . . . . . . .  B  ADDR  00D2H  NOT USED
+P. . . . . . . . . . . . . . . . . .  B  ADDR  00D0H  NOT USED
+P0 . . . . . . . . . . . . . . . . .  D  ADDR  0080H
+P1 . . . . . . . . . . . . . . . . .  D  ADDR  0090H
+P1M1 . . . . . . . . . . . . . . . .  D  ADDR  00D4H  NOT USED
+P1M2 . . . . . . . . . . . . . . . .  D  ADDR  00E2H  NOT USED
+P2 . . . . . . . . . . . . . . . . .  D  ADDR  00A0H
+P3 . . . . . . . . . . . . . . . . .  D  ADDR  00B0H
+P3M1 . . . . . . . . . . . . . . . .  D  ADDR  00D5H  NOT USED
+P3M2 . . . . . . . . . . . . . . . .  D  ADDR  00E3H  NOT USED
+P4 . . . . . . . . . . . . . . . . .  D  ADDR  00C0H  NOT USED
+P4M1 . . . . . . . . . . . . . . . .  D  ADDR  00D6H  NOT USED
+P4M2 . . . . . . . . . . . . . . . .  D  ADDR  00E4H  NOT USED
+P5 . . . . . . . . . . . . . . . . .  D  ADDR  00E8H  NOT USED
+PC . . . . . . . . . . . . . . . . .  B  ADDR  00BEH  NOT USED
+PCON . . . . . . . . . . . . . . . .  D  ADDR  0087H  NOT USED
+PPCL . . . . . . . . . . . . . . . .  B  ADDR  00BEH  NOT USED
+PS . . . . . . . . . . . . . . . . .  B  ADDR  00BCH  NOT USED
+PSL. . . . . . . . . . . . . . . . .  B  ADDR  00BCH  NOT USED
+PSW. . . . . . . . . . . . . . . . .  D  ADDR  00D0H  NOT USED
+PT0. . . . . . . . . . . . . . . . .  B  ADDR  00B9H  NOT USED
+PT0L . . . . . . . . . . . . . . . .  B  ADDR  00B9H  NOT USED
+PT1. . . . . . . . . . . . . . . . .  B  ADDR  00BBH  NOT USED
+PT1L . . . . . . . . . . . . . . . .  B  ADDR  00BBH  NOT USED
+PT2. . . . . . . . . . . . . . . . .  B  ADDR  00BDH  NOT USED
+PT2L . . . . . . . . . . . . . . . .  B  ADDR  00BDH  NOT USED
+PX0. . . . . . . . . . . . . . . . .  B  ADDR  00B8H  NOT USED
+PX0L . . . . . . . . . . . . . . . .  B  ADDR  00B8H  NOT USED
+PX1. . . . . . . . . . . . . . . . .  B  ADDR  00BAH  NOT USED
+PX1L . . . . . . . . . . . . . . . .  B  ADDR  00BAH  NOT USED
+RB8. . . . . . . . . . . . . . . . .  B  ADDR  009AH  NOT USED
+RCAP2H . . . . . . . . . . . . . . .  D  ADDR  00CBH  NOT USED
+RCAP2L . . . . . . . . . . . . . . .  D  ADDR  00CAH  NOT USED
+RCLK . . . . . . . . . . . . . . . .  B  ADDR  00CDH  NOT USED
+RD . . . . . . . . . . . . . . . . .  B  ADDR  00B7H  NOT USED
+REN. . . . . . . . . . . . . . . . .  B  ADDR  009CH  NOT USED
+RESET. . . . . . . . . . . . . . . .  C  ADDR  0000H  NOT USED
+RI . . . . . . . . . . . . . . . . .  B  ADDR  0098H  NOT USED
+RS0. . . . . . . . . . . . . . . . .  B  ADDR  00D3H  NOT USED
+RS1. . . . . . . . . . . . . . . . .  B  ADDR  00D4H  NOT USED
+RXD. . . . . . . . . . . . . . . . .  B  ADDR  00B0H  NOT USED
+SADDR. . . . . . . . . . . . . . . .  D  ADDR  00A9H  NOT USED
+SADDR_0. . . . . . . . . . . . . . .  D  ADDR  00A9H  NOT USED
+SADDR_1. . . . . . . . . . . . . . .  D  ADDR  00AAH  NOT USED
+SADEN. . . . . . . . . . . . . . . .  D  ADDR  00B9H  NOT USED
+SADEN_0. . . . . . . . . . . . . . .  D  ADDR  00B9H  NOT USED
+SADEN_1. . . . . . . . . . . . . . .  D  ADDR  00BAH  NOT USED
+SBUF . . . . . . . . . . . . . . . .  D  ADDR  0099H  NOT USED
+SCON . . . . . . . . . . . . . . . .  D  ADDR  0098H  NOT USED
+SINT . . . . . . . . . . . . . . . .  C  ADDR  0023H  NOT USED
+SLOT1. . . . . . . . . . . . . . . .  C  ADDR  0044H
+SLOT1_DWN. . . . . . . . . . . . . .  C  ADDR  0077H
+SLOT1_UP . . . . . . . . . . . . . .  C  ADDR  00A8H
+SLOT2. . . . . . . . . . . . . . . .  C  ADDR  004CH
+SLOT2_DWN. . . . . . . . . . . . . .  C  ADDR  00C1H
+SLOT2_UP . . . . . . . . . . . . . .  C  ADDR  010FH
+SLOT3. . . . . . . . . . . . . . . .  C  ADDR  0054H
+SLOT3_DWN. . . . . . . . . . . . . .  C  ADDR  013CH
+SLOT3_UP . . . . . . . . . . . . . .  C  ADDR  018EH
+SLOT_SELECT. . . . . . . . . . . . .  C  ADDR  0044H
+SM0. . . . . . . . . . . . . . . . .  B  ADDR  009FH  NOT USED
+SM1. . . . . . . . . . . . . . . . .  B  ADDR  009EH  NOT USED
+SM2. . . . . . . . . . . . . . . . .  B  ADDR  009DH  NOT USED
+SP . . . . . . . . . . . . . . . . .  D  ADDR  0081H  NOT USED
+SPCON. . . . . . . . . . . . . . . .  D  ADDR  00C3H  NOT USED
+SPCR . . . . . . . . . . . . . . . .  D  ADDR  00D5H  NOT USED
+SPDAT. . . . . . . . . . . . . . . .  D  ADDR  00C5H  NOT USED
+SPDR . . . . . . . . . . . . . . . .  D  ADDR  0086H  NOT USED
+SPSR . . . . . . . . . . . . . . . .  D  ADDR  00AAH  NOT USED
+SPSTA. . . . . . . . . . . . . . . .  D  ADDR  00C4H  NOT USED
+T0 . . . . . . . . . . . . . . . . .  B  ADDR  00B4H  NOT USED
+T1 . . . . . . . . . . . . . . . . .  B  ADDR  00B5H  NOT USED
+T2CON. . . . . . . . . . . . . . . .  D  ADDR  00C8H  NOT USED
+T2MOD. . . . . . . . . . . . . . . .  D  ADDR  00C9H  NOT USED
+TB8. . . . . . . . . . . . . . . . .  B  ADDR  009BH  NOT USED
+TCLK . . . . . . . . . . . . . . . .  B  ADDR  00CCH  NOT USED
+TCON . . . . . . . . . . . . . . . .  D  ADDR  0088H  NOT USED
+TF0. . . . . . . . . . . . . . . . .  B  ADDR  008DH
+TF1. . . . . . . . . . . . . . . . .  B  ADDR  008FH  NOT USED
+TF2. . . . . . . . . . . . . . . . .  B  ADDR  00CFH  NOT USED
+TH0. . . . . . . . . . . . . . . . .  D  ADDR  008CH
+TH1. . . . . . . . . . . . . . . . .  D  ADDR  008DH  NOT USED
+TH2. . . . . . . . . . . . . . . . .  D  ADDR  00CDH  NOT USED
+TI . . . . . . . . . . . . . . . . .  B  ADDR  0099H  NOT USED
+TIMER0 . . . . . . . . . . . . . . .  C  ADDR  000BH  NOT USED
+TIMER1 . . . . . . . . . . . . . . .  C  ADDR  001BH  NOT USED
+TIMER2 . . . . . . . . . . . . . . .  C  ADDR  002BH  NOT USED
+TL0. . . . . . . . . . . . . . . . .  D  ADDR  008AH
+TL1. . . . . . . . . . . . . . . . .  D  ADDR  008BH  NOT USED
+TL2. . . . . . . . . . . . . . . . .  D  ADDR  00CCH  NOT USED
+TMOD . . . . . . . . . . . . . . . .  D  ADDR  0089H
+TR0. . . . . . . . . . . . . . . . .  B  ADDR  008CH
+TR1. . . . . . . . . . . . . . . . .  B  ADDR  008EH  NOT USED
+TR2. . . . . . . . . . . . . . . . .  B  ADDR  00CAH  NOT USED
+TXD. . . . . . . . . . . . . . . . .  B  ADDR  00B1H  NOT USED
+WDTCON . . . . . . . . . . . . . . .  D  ADDR  00A7H  NOT USED
+WDTPRG . . . . . . . . . . . . . . .  D  ADDR  00A7H  NOT USED
+WDTRST . . . . . . . . . . . . . . .  D  ADDR  00A6H  NOT USED
+WR . . . . . . . . . . . . . . . . .  B  ADDR  00B6H  NOT USED
+
+
+
+
+
+
+
+
