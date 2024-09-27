@@ -1,4 +1,4 @@
-# Puzzle_Parking_System
+# Puzzle-Parking-System
 PPS using assembly and 8051 micro processor. 
 
 ## External view
