@@ -1,5 +1,5 @@
 # Puzzle-Parking-System
-PPS using assembly and 8051 micro processor. 
+PPS using assembly and 8051 Microprocessor. 
 
 ## External view
 ![13](https://github.com/user-attachments/assets/99dc8b8e-a057-4d3e-9a88-894275b807b1)
